@@ -1,30 +1,37 @@
 class User {
+  final int id;
   final String name;
+  final String username;
   final String email;
-  final bool isLoggedIn;
+  final String phone;
+  final String website;
+  final String companyName;
 
-  User({required this.name, required this.email, this.isLoggedIn = false});
+  User({
+    required this.id,
+    required this.name,
+    required this.username,
+    required this.email,
+    required this.phone,
+    required this.website,
+    required this.companyName,
+  });
 
-  // Konversi ke Map untuk disimpan ke SharedPreferences
-  Map<String, dynamic> toMap() {
-    return {'name': name, 'email': email, 'isLoggedIn': isLoggedIn};
-  }
-
-  // Buat User dari Map
-  factory User.fromMap(Map<String, dynamic> map) {
+  factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      name: map['name'] ?? '',
-      email: map['email'] ?? '',
-      isLoggedIn: map['isLoggedIn'] ?? false,
+      id: json['id'] ?? 0,
+      name: json['name'] ?? '',
+      username: json['username'] ?? '',
+      email: json['email'] ?? '',
+      phone: json['phone'] ?? '',
+      website: json['website'] ?? '',
+      companyName: json['company']?['name'] ?? '',
     );
   }
 
-  // Copy with untuk update sebagian data
-  User copyWith({String? name, String? email, bool? isLoggedIn}) {
-    return User(
-      name: name ?? this.name,
-      email: email ?? this.email,
-      isLoggedIn: isLoggedIn ?? this.isLoggedIn,
-    );
+  // Inisial untuk avatar
+  String get initial {
+    if (name.isEmpty) return '?';
+    return name[0].toUpperCase();
   }
 }
