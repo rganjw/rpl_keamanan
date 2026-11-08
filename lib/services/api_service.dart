@@ -2,30 +2,42 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import '../config/app_config.dart';
 import '../models/user.dart';
-import '../models/post.dart';
+import '../models/post.dart'; // Jangan lupa import model post
 
+/// Service untuk komunikasi HTTP dengan REST API.
+///
+/// Class ini menangani semua request HTTP ke API, termasuk
+/// penanganan error dan timeout.
 class ApiService {
-  static const String _baseUrl = 'https://jsonplaceholder.typicode.com';
+  final http.Client _client;
+  final String _baseUrl;
 
-  // LATIHAN 5: Timeout dinamis dengan nilai bawaan 10 detik
-  Future<List<User>> getUsers({Duration timeoutDuration = const Duration(seconds: 10)}) async {
+  ApiService({http.Client? client, String? baseUrl})
+      : _client = client ?? http.Client(),
+        _baseUrl = baseUrl ?? AppConfig.baseUrl;
+
+  /// Mengambil daftar pengguna dari API.
+  Future<List<User>> getUsers() async {
     try {
-      print('Request GET: $_baseUrl/users');
-      final response = await http
-          .get(Uri.parse('$_baseUrl/users'))
-          .timeout(timeoutDuration);
-
-      print('Response status: ${response.statusCode}');
-
+      _logRequest('GET', '/users');
+      final response = await _client
+          .get(
+            Uri.parse('$_baseUrl/users'),
+            headers: _buildHeaders(),
+          )
+          .timeout(Duration(seconds: AppConfig.timeoutSeconds));
+      
+      _logResponse(response.statusCode);
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         return data.map((json) => User.fromJson(json)).toList();
       } else {
-        throw HttpException('Gagal memuat data. Status: ${response.statusCode}');
+        throw Exception('Gagal memuat data. Status: ${response.statusCode}');
       }
     } on TimeoutException {
-      throw Exception('Request timeout setelah ${timeoutDuration.inSeconds} detik. Periksa koneksi Anda.');
+      throw Exception('Request timeout. Periksa koneksi internet Anda.');
     } on SocketException {
       throw Exception('Tidak ada koneksi internet. Periksa jaringan Anda.');
     } on FormatException {
@@ -35,36 +47,68 @@ class ApiService {
     }
   }
 
-  // LATIHAN 3: Endpoint GET /posts
-  Future<List<Post>> getPosts({Duration timeoutDuration = const Duration(seconds: 10)}) async {
+  /// Mengambil pengguna berdasarkan [id].
+  Future<User> getUserById(int id) async {
     try {
-      print('Request GET: $_baseUrl/posts');
-      final response = await http
-          .get(Uri.parse('$_baseUrl/posts'))
-          .timeout(timeoutDuration);
+      _logRequest('GET', '/users/$id');
+      final response = await _client
+          .get(
+            Uri.parse('$_baseUrl/users/$id'),
+            headers: _buildHeaders(),
+          )
+          .timeout(Duration(seconds: AppConfig.timeoutSeconds));
 
+      _logResponse(response.statusCode);
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => Post.fromJson(json)).toList();
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        return User.fromJson(data);
       } else {
-        throw HttpException('Gagal memuat posts. Status: ${response.statusCode}');
+        throw Exception('Gagal memuat data. Status: ${response.statusCode}');
       }
     } on TimeoutException {
-      throw Exception('Request timeout.');
+      throw Exception('Request timeout. Periksa koneksi internet Anda.');
     } on SocketException {
-      throw Exception('Tidak ada koneksi internet.');
+      throw Exception('Tidak ada koneksi internet. Periksa jaringan Anda.');
     } catch (e) {
       throw Exception('Terjadi kesalahan: $e');
     }
   }
 
-  // LATIHAN 1: Simulasi Login
+  /// ==========================================
+  /// TAMBAHAN UNTUK LATIHAN 1: GET POSTS
+  /// ==========================================
+  Future<List<Post>> getPosts() async {
+    try {
+      _logRequest('GET', '/posts');
+      final response = await _client
+          .get(
+            Uri.parse('$_baseUrl/posts'),
+            headers: _buildHeaders(),
+          )
+          .timeout(Duration(seconds: AppConfig.timeoutSeconds));
+
+      _logResponse(response.statusCode);
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => Post.fromJson(json)).toList();
+      } else {
+        throw Exception('Gagal memuat data post. Status: ${response.statusCode}');
+      }
+    } on TimeoutException {
+      throw Exception('Request timeout. Periksa koneksi internet Anda.');
+    } on SocketException {
+      throw Exception('Tidak ada koneksi internet. Periksa jaringan Anda.');
+    } catch (e) {
+      throw Exception('Terjadi kesalahan: $e');
+    }
+  }
+
+  /// Simulasi login untuk mendapatkan token
   Future<String> login(String email, String password) async {
     try {
       await Future.delayed(const Duration(seconds: 1));
       if (email.isNotEmpty && password.isNotEmpty) {
         final token = 'dummy_token_${DateTime.now().millisecondsSinceEpoch}';
-        // Logging aman (tidak mencetak token)
         print('Login berhasil untuk email: $email');
         return token;
       } else {
@@ -74,12 +118,27 @@ class ApiService {
       throw Exception('Login gagal: $e');
     }
   }
-}
 
-class HttpException implements Exception {
-  final String message;
-  HttpException(this.message);
+  /// Membangun header untuk request HTTP.
+  Map<String, String> _buildHeaders() {
+    return {
+      'Content-Type': 'application/json',
+      'X-API-Key': AppConfig.apiKey,
+    };
+  }
 
-  @override
-  String toString() => message;
+  /// Logging request yang aman.
+  void _logRequest(String method, String endpoint) {
+    print('[$method] $endpoint');
+  }
+
+  /// Logging response yang aman.
+  void _logResponse(int statusCode) {
+    print('Response status: $statusCode');
+  }
+
+  /// Menutup client.
+  void dispose() {
+    _client.close();
+  }
 }

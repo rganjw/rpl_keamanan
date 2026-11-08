@@ -38,7 +38,7 @@ class _UserListScreenState extends State<UserListScreen> {
     });
 
     try {
-      final users = await _apiService.getUsers(timeoutDuration: const Duration(seconds: 8)); // LATIHAN 5
+     final users = await _apiService.getUsers();
       setState(() {
         _users = users;
         _filteredUsers = users; // Default tampilkan semua
